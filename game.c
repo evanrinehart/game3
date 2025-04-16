@@ -38,6 +38,13 @@ void draw_block(Vector2 w, float wsize) {
     DrawRectangle(p.x, p.y, psize, psize, BLUE);
 }
 
+void draw_box(Rectangle w) {
+    Vector2 p = worldToScreen((Vector2){w.x, w.y});
+    float width = w.width * zoom;
+    float height = w.height * zoom;
+    DrawRectangleLines(p.x, p.y, width, height, PURPLE);
+}
+
 void draw_tri(Vector2 w1, Vector2 w2, Vector2 w3) {
     Vector2 p1 = worldToScreen(w1);
     Vector2 p2 = worldToScreen(w2);
@@ -81,7 +88,7 @@ float tri_angle = 0;
 float tri_spin = 0.005;
 Vector2 tri_base = {150,150};
 
-void triangulate(Vector2 *p1, Vector2 *p2, Vector2 *p3) {
+void triangulate(Vector2 *p1, Vector2 *p2, Vector2 *p3, Rectangle *bounds) {
     float a = 10 * tan(M_PI / 6);
     float c = 10 * tan(M_PI / 3) - a;
     Vector2 base = tri_base;
@@ -92,12 +99,22 @@ void triangulate(Vector2 *p1, Vector2 *p2, Vector2 *p3) {
     *p1 = add(base, rot(t1, angle));
     *p2 = add(base, rot(t2, angle));
     *p3 = add(base, rot(t3, angle));
+    float xmin = MIN(p1->x, MIN(p2->x, p3->x));
+    float xmax = MAX(p1->x, MAX(p2->x, p3->x));
+    float ymin = MIN(p1->y, MIN(p2->y, p3->y));
+    float ymax = MAX(p1->y, MAX(p2->y, p3->y));
+    bounds->x = xmin;
+    bounds->y = ymin;
+    bounds->width = xmax - xmin;
+    bounds->height = ymax - ymin;
 }
 
 void tri_render() {
     Vector2 p1, p2, p3;
-    triangulate(&p1, &p2, &p3);
+    Rectangle bounds;
+    triangulate(&p1, &p2, &p3, &bounds);
     draw_tri(p1, p2, p3);
+    draw_box(bounds);
 }
 
 void tri_advance() {
@@ -106,14 +123,9 @@ void tri_advance() {
 
 int tri_hit(Vector2 w) {
     Vector2 p1, p2, p3;
-    triangulate(&p1, &p2, &p3);
-    float xmin = MIN(p1.x, MIN(p2.x, p3.x));
-    float xmax = MAX(p1.x, MAX(p2.x, p3.x));
-    float ymin = MIN(p1.y, MIN(p2.y, p3.y));
-    float ymax = MAX(p1.y, MAX(p2.y, p3.y));
-    if(w.x < xmin || xmax < w.x) return 0;
-    if(w.y < ymin || ymax < w.y) return 0;
-    return 1;
+    Rectangle bounds;
+    triangulate(&p1, &p2, &p3, &bounds);
+    return CheckCollisionPointRec(w, bounds);
 }
 
 
@@ -176,6 +188,7 @@ int main(int argc, char *argv[]) {
         tri_advance();
     }
 
+    CloseAudioDevice();
     CloseWindow();
 
     return 0;
